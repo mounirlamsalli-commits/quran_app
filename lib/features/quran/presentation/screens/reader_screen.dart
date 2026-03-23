@@ -8,6 +8,7 @@ import '../../../../core/services/download_service.dart';
 import '../controllers/reader_controller.dart';
 import '../providers/download_provider.dart';
 import '../../../bookmarks/presentation/controllers/bookmarks_controller.dart';
+import '../../../bookmarks/domain/entities/bookmark.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final int surahNumber;
@@ -121,7 +122,26 @@ class _QuranTab extends ConsumerWidget {
     final ayahsAsync = ref.watch(surahAyahsProvider(surahNumber));
     final currentAyah = ref.watch(currentAyahProvider);
     final isPlaying = ref.watch(isPlayingProvider);
-    final bookmarks = ref.watch(bookmarksProvider);
+    final readingBookmark = ref.watch(lastReadingBookmarkProvider);
+    final memorizationBookmark = ref.watch(lastMemorizationBookmarkProvider);
+    final reviewBookmark = ref.watch(lastReviewBookmarkProvider);
+
+    // Check if current ayah is bookmarked with any type
+    Bookmark? getBookmarkForAyah(int ayahNum) {
+      if (readingBookmark?.surahNumber == surahNumber &&
+          readingBookmark?.ayahNumber == ayahNum) {
+        return readingBookmark;
+      }
+      if (memorizationBookmark?.surahNumber == surahNumber &&
+          memorizationBookmark?.ayahNumber == ayahNum) {
+        return memorizationBookmark;
+      }
+      if (reviewBookmark?.surahNumber == surahNumber &&
+          reviewBookmark?.ayahNumber == ayahNum) {
+        return reviewBookmark;
+      }
+      return null;
+    }
 
     return ayahsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -136,9 +156,8 @@ class _QuranTab extends ConsumerWidget {
           final ayah = ayahs[i];
           final isCurrentlyPlaying =
               ayah.numberInSurah == currentAyah && isPlaying;
-          final isBookmarked = bookmarks.any((b) =>
-              b.surahNumber == surahNumber &&
-              b.ayahNumber == ayah.numberInSurah);
+          final bookmark = getBookmarkForAyah(ayah.numberInSurah);
+          final isBookmarked = bookmark != null;
 
           return GestureDetector(
             onTap: () => ref.read(currentAyahProvider.notifier).state =
@@ -191,16 +210,19 @@ class _QuranTab extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         GestureDetector(
-                          onTap: () => ref
-                              .read(bookmarksProvider.notifier)
-                              .toggleBookmark(
-                                surahNumber: surahNumber,
-                                ayahNumber: ayah.numberInSurah,
-                                ayahText: ayah.textUthmani,
-                              ),
+                          onTap: () => _showBookmarkTypeSelector(
+                            context,
+                            ref,
+                            ayah.numberInSurah,
+                            ayah.textUthmani,
+                          ),
                           child: Icon(
                             isBookmarked
-                                ? Icons.bookmark
+                                ? (bookmark?.type == BookmarkType.memorization
+                                    ? Icons.school
+                                    : bookmark?.type == BookmarkType.review
+                                        ? Icons.refresh
+                                        : Icons.menu_book)
                                 : Icons.bookmark_outline,
                             size: 16,
                             color: isBookmarked
@@ -234,63 +256,12 @@ class _QuranTab extends ConsumerWidget {
 
   void _showAyahMenu(
       BuildContext context, WidgetRef ref, int ayahNumber, String text) {
-    final isBookmarked = ref
-        .read(bookmarksProvider)
-        .any((b) => b.surahNumber == surahNumber && b.ayahNumber == ayahNumber);
-
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(
-                  isBookmarked
-                      ? Icons.bookmark_remove
-                      : Icons.bookmark_add_outlined,
-                  color: AppColors.primary),
-              title: Text(isBookmarked ? 'إزالة الإشارة' : 'إضافة إشارة'),
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(bookmarksProvider.notifier).toggleBookmark(
-                      surahNumber: surahNumber,
-                      ayahNumber: ayahNumber,
-                      ayahText: text,
-                    );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(isBookmarked
-                        ? 'تمت إزالة الإشارة'
-                        : 'تمت إضافة الإشارة'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.copy, color: AppColors.secondary),
-              title: const Text('نسخ الآية'),
-              onTap: () {
-                Navigator.pop(context);
-                Clipboard.setData(ClipboardData(text: text));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('تم نسخ الآية'),
-                      duration: Duration(seconds: 2)),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.play_circle_outline,
-                  color: AppColors.primary),
-              title: const Text('تشغيل من هذه الآية'),
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(currentAyahProvider.notifier).state = ayahNumber;
-                ref.read(isPlayingProvider.notifier).state = true;
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.menu_book_outlined,
                   color: AppColors.secondary),
@@ -319,6 +290,96 @@ class _QuranTab extends ConsumerWidget {
               onTap: () {
                 Navigator.pop(context);
                 _downloadAyahAudio(context, ref, ayahNumber);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined,
+                  color: AppColors.primary),
+              title: const Text('إضافة إشارة'),
+              onTap: () {
+                Navigator.pop(context);
+                _showBookmarkTypeSelector(context, ref, ayahNumber, text);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBookmarkTypeSelector(
+      BuildContext context, WidgetRef ref, int ayahNumber, String text) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'اختر نوع الإشارة',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book, color: Colors.blue),
+              title: const Text('إشارة التلاوة'),
+              subtitle: const Text('آخر موضع وصلت إليه في التلاوة'),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(bookmarksProvider.notifier).addBookmark(
+                      surahNumber: surahNumber,
+                      ayahNumber: ayahNumber,
+                      ayahText: text,
+                      type: BookmarkType.reading,
+                    );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم تحديث إشارة التلاوة'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.school, color: Colors.green),
+              title: const Text('إشارة الحفظ'),
+              subtitle: const Text('الآية التي تحفظها حالياً'),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(bookmarksProvider.notifier).addBookmark(
+                      surahNumber: surahNumber,
+                      ayahNumber: ayahNumber,
+                      ayahText: text,
+                      type: BookmarkType.memorization,
+                    );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم تحديث إشارة الحفظ'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.refresh, color: Colors.orange),
+              title: const Text('إشارة المراجعة'),
+              subtitle: const Text('الآية التي تراجعها'),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(bookmarksProvider.notifier).addBookmark(
+                      surahNumber: surahNumber,
+                      ayahNumber: ayahNumber,
+                      ayahText: text,
+                      type: BookmarkType.review,
+                    );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم تحديث إشارة المراجعة'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               },
             ),
           ],

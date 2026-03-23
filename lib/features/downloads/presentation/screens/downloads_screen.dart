@@ -1,233 +1,248 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/download_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../data/repositories/download_repository_impl.dart';
-import '../../domain/entities/download.dart';
-import 'dart:async';
+import '../../../quran/presentation/providers/download_provider.dart';
 
-final downloadedSurahsProvider = FutureProvider<List<DownloadedSurah>>((ref) async {
-  final repo = DownloadRepositoryImpl();
-  final result = await repo.getDownloadedSurahs();
-  return result.fold((failure) => [], (surahs) => surahs);
-});
-
-final downloadProgressProvider = StateProvider<DownloadProgress>((ref) => 
-  const DownloadProgress(downloaded: 0, total: 0, percentage: 0, status: DownloadStatus.pending));
-
-class DownloadsScreen extends ConsumerStatefulWidget {
+class DownloadsScreen extends ConsumerWidget {
   const DownloadsScreen({super.key});
-  @override
-  ConsumerState<DownloadsScreen> createState() => _DownloadsScreenState();
-}
 
-class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
-  StreamSubscription<DownloadProgress>? _progressSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToProgress();
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   @override
-  void dispose() {
-    _progressSubscription?.cancel();
-    super.dispose();
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloadsAsync = ref.watch(downloadsListProvider);
+    final totalSizeAsync = ref.watch(downloadSizeProvider);
 
-  void _listenToProgress() {
-    final repo = DownloadRepositoryImpl();
-    _progressSubscription = repo.getDownloadProgress().listen((progress) {
-      ref.read(downloadProgressProvider.notifier).state = progress;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final downloadedAsync = ref.watch(downloadedSurahsProvider);
-    final progress = ref.watch(downloadProgressProvider);
-    
     return Scaffold(
-      appBar: AppBar(title: const Text('التحميلات')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        if (progress.status != DownloadStatus.pending) _ProgressCard(progress: progress),
-        const SizedBox(height: 16),
-        _SectionHeader(title: 'تحميل سور جديدة'),
-        _DownloadSurahsList(),
-        const SizedBox(height: 24),
-        _SectionHeader(title: 'السور المحملة'),
-        downloadedAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('خطأ: $e')),
-          data: (surahs) => surahs.isEmpty
-              ? const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('لا توجد سور محملة')))
-              : _DownloadedSurahsList(surahs: surahs),
-        ),
-      ]),
-    );
-  }
-}
-
-class _ProgressCard extends StatelessWidget {
-  final DownloadProgress progress;
-  const _ProgressCard({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: progress.status == DownloadStatus.failed ? AppColors.error.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          Row(children: [
-            if (progress.status == DownloadStatus.downloading)
-              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-            if (progress.status == DownloadStatus.completed)
-              const Icon(Icons.check_circle, color: AppColors.success, size: 24),
-            if (progress.status == DownloadStatus.failed)
-              const Icon(Icons.error, color: AppColors.error, size: 24),
-            const SizedBox(width: 12),
-            Expanded(child: Text(
-              progress.status == DownloadStatus.downloading ? 'جاري التحميل... ${progress.percentage.toInt()}%'
-                : progress.status == DownloadStatus.completed ? 'تم التحميل بنجاح'
-                : 'فشل التحميل: ${progress.error ?? "خطأ غير معروف"}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            )),
-          ]),
-          if (progress.status == DownloadStatus.downloading) ...[
-            const SizedBox(height: 12),
-            LinearProgressIndicator(value: progress.percentage / 100, color: AppColors.primary),
-          ],
-        ]),
-      ),
-    );
-  }
-}
-
-class _DownloadSurahsList extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 10,
-      itemBuilder: (context, index) {
-        final surahNumber = index + 1;
-        final surahNames = ['الفاتحة', 'البقرة', 'آل عمران', 'النساء', 'المائدة', 'الأنعام', 'الأعراف', 'الأنفال', 'التوبة', 'يونس'];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: Center(child: Text('${surahNumber}', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))),
-            ),
-            title: Text(surahNames[index]),
-            subtitle: Text('سورة ${surahNumber}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.download),
-              onPressed: () => _showReciterDialog(context, ref, surahNumber),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showReciterDialog(BuildContext context, WidgetRef ref, int surahNumber) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('اختر القارئ'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(children: AppConstants.reciters.entries.map((e) => ListTile(
-            title: Text(e.value),
-            trailing: const Icon(Icons.download),
-            onTap: () {
-              Navigator.pop(context);
-              _startDownload(context, ref, surahNumber, e.key);
-            },
-          )).toList()),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _startDownload(BuildContext context, WidgetRef ref, int surahNumber, String reciterId) async {
-    final repo = DownloadRepositoryImpl();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('بدء التحميل...')));
-    await repo.downloadSurah(surahNumber, reciterId);
-    ref.invalidate(downloadedSurahsProvider);
-  }
-}
-
-class _DownloadedSurahsList extends ConsumerWidget {
-  final List<DownloadedSurah> surahs;
-  const _DownloadedSurahsList({required this.surahs});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: surahs.length,
-      itemBuilder: (context, index) {
-        final surah = surahs[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.offline_pin, color: AppColors.secondary),
-            ),
-            title: Text(surah.surahName),
-            subtitle: Text('${surah.reciterName} • ${surah.sizeFormatted}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.error),
-              onPressed: () => _confirmDelete(context, ref, surah),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(BuildContext context, WidgetRef ref, DownloadedSurah surah) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف السورة'),
-        content: Text('هل تريد حذف ${surah.surahName} من التحميلات؟'),
+      appBar: AppBar(
+        title: const Text('التحميلات'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          ElevatedButton(
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: () => _showClearAllDialog(context, ref),
+            tooltip: 'مسح الكل',
+          ),
+        ],
+      ),
+      body: downloadsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('خطأ: $e')),
+        data: (downloads) {
+          if (downloads.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.folder_open_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'لا توجد ملفات محملة',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'قم بتحميل الملفات الصوتية أثناء الاتصال بالإنترنت',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.storage, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'إجمالي المساحة المستخدمة',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          totalSizeAsync.when(
+                            data: (size) => Text(
+                              _formatFileSize(size),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            loading: () => const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            error: (_, __) => const Text('--'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${downloads.length} ملف',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: downloads.length,
+                  itemBuilder: (context, index) {
+                    final download = downloads[index];
+                    final fileName = download['name'] as String;
+                    final size = download['size'] as int;
+                    final modified = download['modified'] as DateTime;
+
+                    // Parse file name to get surah and ayah info
+                    final parts = _parseFileName(fileName);
+
+                    return Dismissible(
+                      key: Key(fileName),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) async {
+                        final file = File(download['path'] as String);
+                        if (await file.exists()) {
+                          await file.delete();
+                        }
+                        ref.invalidate(downloadsListProvider);
+                        ref.invalidate(downloadSizeProvider);
+                      },
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          child: Icon(
+                            Icons.audio_file,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        title: Text(
+                          parts['isSurah'] == true
+                              ? 'سورة ${parts['surah']}'
+                              : 'آية ${parts['ayah']} من سورة ${parts['surah']}',
+                        ),
+                        subtitle: Text(
+                          '${_formatFileSize(size)} • ${_formatDate(modified)}',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.play_circle_outline),
+                          onPressed: () => _playDownloadedAudio(
+                              context, download['path'] as String),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Map<String, dynamic> _parseFileName(String fileName) {
+    // Format: s001_a001_r1.mp3 or surah_001_r1.mp3
+    final result = <String, dynamic>{
+      'surah': 0,
+      'ayah': 0,
+      'isSurah': false,
+    };
+
+    if (fileName.startsWith('s')) {
+      // Single ayah file
+      final match = RegExp(r's(\d+)_a(\d+)_r(\d+)\.mp3').firstMatch(fileName);
+      if (match != null) {
+        result['surah'] = int.tryParse(match.group(1)!) ?? 0;
+        result['ayah'] = int.tryParse(match.group(2)!) ?? 0;
+        result['isSurah'] = false;
+      }
+    } else if (fileName.startsWith('surah')) {
+      // Full surah file
+      final match = RegExp(r'surah_(\d+)_r(\d+)\.mp3').firstMatch(fileName);
+      if (match != null) {
+        result['surah'] = int.tryParse(match.group(1)!) ?? 0;
+        result['isSurah'] = true;
+      }
+    }
+
+    return result;
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _showClearAllDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('مسح جميع التحميلات'),
+        content: const Text('هل أنت متأكد من حذف جميع الملفات المحملة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              final repo = DownloadRepositoryImpl();
-              await repo.deleteDownloadedSurah(surah.surahNumber);
-              ref.invalidate(downloadedSurahsProvider);
+              final service = ref.read(downloadServiceProvider);
+              await service.clearAllDownloads();
+              ref.invalidate(downloadsListProvider);
+              ref.invalidate(downloadSizeProvider);
+              if (context.mounted) Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('حذف'),
+            child: const Text('مسح', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
   }
-}
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.primary)),
-  );
+  void _playDownloadedAudio(BuildContext context, String filePath) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('سيتم تشغيل الملف...')),
+    );
   }
 }

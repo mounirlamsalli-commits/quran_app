@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/l10n/locale_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../quran/presentation/controllers/reader_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -100,6 +102,16 @@ class SettingsScreen extends ConsumerWidget {
                 }
               },
             ),
+          ),
+          const Divider(),
+          _SectionHeader(title: 'الملفات المحملة'),
+          ListTile(
+            leading: const Icon(Icons.download_for_offline,
+                color: AppColors.primary),
+            title: const Text('إدارة التحميلات'),
+            subtitle: const Text('عرض وحذف الملفات الصوتية المحملة'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => context.push(AppRoutes.downloads),
           ),
           const Divider(),
           _SectionHeader(title: 'عن التطبيق'),

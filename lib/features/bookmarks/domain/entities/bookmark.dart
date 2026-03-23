@@ -1,12 +1,41 @@
 import 'package:equatable/equatable.dart';
 
+enum BookmarkType {
+  reading, // إشارة التلاوة
+  memorization, // إشارة الحفظ
+  review, // إشارة المراجعة
+}
+
+extension BookmarkTypeExtension on BookmarkType {
+  String get displayName {
+    switch (this) {
+      case BookmarkType.reading:
+        return 'تلاوة';
+      case BookmarkType.memorization:
+        return 'حفظ';
+      case BookmarkType.review:
+        return 'مراجعة';
+    }
+  }
+
+  String get iconName {
+    switch (this) {
+      case BookmarkType.reading:
+        return 'reading';
+      case BookmarkType.memorization:
+        return 'memorization';
+      case BookmarkType.review:
+        return 'review';
+    }
+  }
+}
+
 class Bookmark extends Equatable {
   final String id;
   final int surahNumber;
   final int ayahNumber;
   final String ayahText;
-  final String customName;
-  final String folderId;
+  final BookmarkType type;
   final DateTime createdAt;
   final String? note;
 
@@ -15,8 +44,7 @@ class Bookmark extends Equatable {
     required this.surahNumber,
     required this.ayahNumber,
     required this.ayahText,
-    required this.customName,
-    required this.folderId,
+    required this.type,
     required this.createdAt,
     this.note,
   });
@@ -27,8 +55,10 @@ class Bookmark extends Equatable {
       surahNumber: map['surahNumber'] ?? 1,
       ayahNumber: map['ayahNumber'] ?? 1,
       ayahText: map['ayahText'] ?? '',
-      customName: map['customName'] ?? '',
-      folderId: map['folderId'] ?? '',
+      type: BookmarkType.values.firstWhere(
+        (e) => e.name == (map['type'] ?? 'reading'),
+        orElse: () => BookmarkType.reading,
+      ),
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
           : DateTime.now(),
@@ -42,8 +72,7 @@ class Bookmark extends Equatable {
       'surahNumber': surahNumber,
       'ayahNumber': ayahNumber,
       'ayahText': ayahText,
-      'customName': customName,
-      'folderId': folderId,
+      'type': type.name,
       'createdAt': createdAt.toIso8601String(),
       'note': note,
     };
@@ -54,8 +83,7 @@ class Bookmark extends Equatable {
     int? surahNumber,
     int? ayahNumber,
     String? ayahText,
-    String? customName,
-    String? folderId,
+    BookmarkType? type,
     DateTime? createdAt,
     String? note,
   }) {
@@ -64,27 +92,11 @@ class Bookmark extends Equatable {
       surahNumber: surahNumber ?? this.surahNumber,
       ayahNumber: ayahNumber ?? this.ayahNumber,
       ayahText: ayahText ?? this.ayahText,
-      customName: customName ?? this.customName,
-      folderId: folderId ?? this.folderId,
+      type: type ?? this.type,
       createdAt: createdAt ?? this.createdAt,
       note: note ?? this.note,
     );
   }
-
-  @override
-  List<Object?> get props => [id];
-}
-
-class BookmarkFolder extends Equatable {
-  final String id;
-  final String name;
-  final DateTime createdAt;
-
-  const BookmarkFolder({
-    required this.id,
-    required this.name,
-    required this.createdAt,
-  });
 
   @override
   List<Object?> get props => [id];

@@ -11,23 +11,57 @@ class BookmarksScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bookmarks = ref.watch(bookmarksProvider);
+    final readingBookmark = ref.watch(lastReadingBookmarkProvider);
+    final memorizationBookmark = ref.watch(lastMemorizationBookmarkProvider);
+    final reviewBookmark = ref.watch(lastReviewBookmarkProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('الإشارات المرجعية'),
         actions: [
-          if (bookmarks.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'حذف الكل',
-              onPressed: () => _confirmDeleteAll(context, ref),
-            ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined),
+            tooltip: 'حذف الكل',
+            onPressed: () => _confirmDeleteAll(context, ref),
+          ),
         ],
       ),
-      body: bookmarks.isEmpty
+      body: readingBookmark == null &&
+              memorizationBookmark == null &&
+              reviewBookmark == null
           ? const _EmptyBookmarks()
-          : _BookmarksList(bookmarks: bookmarks),
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (readingBookmark != null)
+                  _BookmarkCard(
+                    bookmark: readingBookmark,
+                    type: BookmarkType.reading,
+                    color: Colors.blue,
+                    icon: Icons.menu_book,
+                    title: 'إشارة التلاوة',
+                    subtitle: 'آخر موضع وصلت إليه في التلاوة',
+                  ),
+                if (memorizationBookmark != null)
+                  _BookmarkCard(
+                    bookmark: memorizationBookmark,
+                    type: BookmarkType.memorization,
+                    color: Colors.green,
+                    icon: Icons.school,
+                    title: 'إشارة الحفظ',
+                    subtitle: 'الآية التي تحفظها حالياً',
+                  ),
+                if (reviewBookmark != null)
+                  _BookmarkCard(
+                    bookmark: reviewBookmark,
+                    type: BookmarkType.review,
+                    color: Colors.orange,
+                    icon: Icons.refresh,
+                    title: 'إشارة المراجعة',
+                    subtitle: 'الآية التي تراجعها',
+                  ),
+              ],
+            ),
     );
   }
 
@@ -38,13 +72,21 @@ class BookmarksScreen extends ConsumerWidget {
         title: const Text('حذف جميع الإشارات'),
         content: const Text('هل أنت متأكد من حذف جميع الإشارات المرجعية؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء')),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              for (final b in ref.read(bookmarksProvider)) {
-                ref.read(bookmarksProvider.notifier).removeBookmark(b.surahNumber, b.ayahNumber);
-              }
+              ref
+                  .read(bookmarksProvider.notifier)
+                  .removeBookmarkByType(BookmarkType.reading);
+              ref
+                  .read(bookmarksProvider.notifier)
+                  .removeBookmarkByType(BookmarkType.memorization);
+              ref
+                  .read(bookmarksProvider.notifier)
+                  .removeBookmarkByType(BookmarkType.review);
             },
             child: const Text('حذف', style: TextStyle(color: Colors.red)),
           ),
@@ -63,14 +105,18 @@ class _EmptyBookmarks extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.bookmark_outline, size: 72, color: AppColors.primary.withOpacity(0.4)),
+          Icon(Icons.bookmark_outline,
+              size: 72, color: AppColors.primary.withOpacity(0.4)),
           const SizedBox(height: 16),
           Text('لا توجد إشارات مرجعية بعد',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
-            'اضغط مطولاً على أي آية في شاشة القراءة لإضافة إشارة',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            'اضغط على أيقونة الإشارة في أي آية لإضافة إشارة',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.grey),
             textAlign: TextAlign.center,
           ),
         ],
@@ -79,88 +125,127 @@ class _EmptyBookmarks extends StatelessWidget {
   }
 }
 
-class _BookmarksList extends ConsumerWidget {
-  final List<Bookmark> bookmarks;
-  const _BookmarksList({required this.bookmarks});
+class _BookmarkCard extends ConsumerWidget {
+  final Bookmark bookmark;
+  final BookmarkType type;
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _BookmarkCard({
+    required this.bookmark,
+    required this.type,
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sorted = [...bookmarks]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: sorted.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final b = sorted[i];
-        return Dismissible(
-          key: Key(b.id),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: 20),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.delete, color: Colors.white),
-          ),
-          onDismissed: (_) {
-            ref.read(bookmarksProvider.notifier).removeBookmark(b.surahNumber, b.ayahNumber);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تمت إزالة الإشارة'), duration: Duration(seconds: 2)),
-            );
-          },
-          child: InkWell(
-            onTap: () => context.go('${AppRoutes.surahList}/${b.surahNumber}'),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.15)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      child: InkWell(
+        onTap: () =>
+            context.go('${AppRoutes.surahList}/${bookmark.surahNumber}'),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'سورة ${b.surahNumber} - آية ${b.ayahNumber}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.primary),
-                        ),
-                      ),
-                      const Icon(Icons.bookmark, size: 16, color: AppColors.primary),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: color, size: 24),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    b.ayahText,
-                    style: const TextStyle(fontFamily: 'UthmanicHafs', fontSize: 18, height: 1.9),
-                    textDirection: TextDirection.rtl,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    b.customName,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey),
-                    textDirection: TextDirection.rtl,
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () {
+                      ref
+                          .read(bookmarksProvider.notifier)
+                          .removeBookmarkByType(type);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('تمت إزالة $title'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-            ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'سورة ${bookmark.surahNumber} - آية ${bookmark.ayahNumber}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Text(
+                    _formatDate(bookmark.createdAt),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                bookmark.ayahText,
+                style: const TextStyle(
+                    fontFamily: 'UthmanicHafs', fontSize: 20, height: 2),
+                textDirection: TextDirection.rtl,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
