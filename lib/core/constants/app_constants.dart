@@ -3,7 +3,7 @@ class AppConstants {
 
   // API
   static const String baseUrl = 'https://api.quran.com/api/v4';
-  static const String audioBaseUrl = 'https://cdn.islamway.net/quran';
+  static const String audioBaseUrl = 'https://server7.mp3quran.net';
 
   // Quran
   static const int totalSurahs = 114;
@@ -26,25 +26,24 @@ class AppConstants {
   static const String keySelectedTranslation = 'selected_translation';
   static const String keyAudioSpeed = 'audio_speed';
 
-  // Audio reciters with working URLs
+  // Audio reciters with working URLs from mp3quran.net
   static const Map<String, String> reciters = {
-    'arabdulbassitabdulsamad': 'عبد الباسط عبد الصمد',
-    'ar.abdurrahmaansudais': 'عبد الرحمن السديس',
-    'ar.abdulsamad': 'عبد الصمد',
-    'ar.alafasy': 'مشاري راشد العفاسي',
-    'ar.husary': 'محمود خليل الحصري',
-    'ar.minshawi': 'محمد صديق المنشاوي',
-    'ar.muhammadayyoub': 'محمد أيوب',
-    'ar.saaboriqee': 'سعود الشريم',
+    'Alafasy': 'مشاري راشد العفاسي',
+    'Abdul_Basit': 'عبد الباسط عبد الصمد',
+    'Husary': 'محمود خليل الحصري',
+    'Minshawi': 'محمد صديق المنشاوي',
+    'Abdurrahman_AsSudais': 'عبد الرحمن السديس',
+    'Saaboriqee': 'سعود الشريم',
+    'Muhammad_Ayyoub': 'محمد أيوب',
   };
 
   // Tafseer IDs (from api.quran.com/api/v4/resources/tafsirs)
   static const Map<int, String> tafseers = {
-    14: 'Tafsir Ibn Kathir - ابن كثير',
-    91: 'Al-Sa\'di - السعدي',
-    15: 'Al-Tabari - الطبري',
-    93: 'Al-Tafsir al-Wasit - الوسيط',
-    94: 'Tafseer Al-Baghawi - البغوي',
+    14: 'ابن كثير - Ibn Kathir',
+    91: 'السعدي - Al-Sa\'di',
+    15: 'الطبري - Al-Tabari',
+    93: 'الوسيط - Al-Wasit',
+    94: 'البغوي - Al-Baghawi',
   };
 
   // Translations IDs (from api.quran.com/api/v4/resources/translations)
@@ -52,11 +51,9 @@ class AppConstants {
     20: 'English - Saheeh International',
     22: 'English - Yusuf Ali',
     19: 'English - Pickthall',
-    21: 'English - Yusuf Ali (Original)',
     31: 'French - Muhammad Hamidullah',
-    56: 'Chinese - Ma Jian (Simplified)',
-    33: 'Indonesian - Indonesian Islamic Affairs Ministry',
-    136: 'French - Montada Islamic Foundation',
+    56: 'Chinese - Ma Jian',
+    33: 'Indonesian - Ministry',
   };
 
   // Languages

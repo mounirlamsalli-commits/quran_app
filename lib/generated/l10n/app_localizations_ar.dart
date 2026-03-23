@@ -41,7 +41,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String searchNoResults(String query) {
-    return 'لا نتائج لـ \"$query\"';
+    return 'لا نتائج لـ $query';
   }
 
   @override

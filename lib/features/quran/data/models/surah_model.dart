@@ -13,13 +13,13 @@ class SurahModel extends Surah {
 
   factory SurahModel.fromJson(Map<String, dynamic> json) {
     return SurahModel(
-      number:          json['id'],
+      number:          json['id'] ?? 0,
       nameArabic:      json['name_arabic'] ?? '',
       nameSimple:      json['name_simple'] ?? '',
       nameTranslation: json['translated_name']?['name'] ?? '',
       ayahCount:       json['verses_count'] ?? 0,
       revelationPlace: json['revelation_place'] ?? 'mecca',
-      juzStart:        json['pages']?[0] ?? 1,
+      juzStart:        (json['pages'] as List?)?.first ?? 1,
     );
   }
 }

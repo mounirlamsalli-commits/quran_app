@@ -25,16 +25,16 @@ final surahAyahsProvider =
   return verses.map((e) => AyahModel.fromJson(e)).toList();
 });
 
-// Selected tafseer - simple StateProvider
+// Selected tafseer - default Ibn Kathir (14)
 final selectedTafseerProvider = StateProvider<int>((ref) => 14);
 
-// Selected translation - simple StateProvider
+// Selected translation - default English Saheeh (20)
 final selectedTranslationProvider = StateProvider<int>((ref) => 20);
 
-// Selected reciter - simple StateProvider
-final selectedReciterProvider = StateProvider<String>((ref) => 'ar.alafasy');
+// Selected reciter
+final selectedReciterProvider = StateProvider<String>((ref) => 'Alafasy');
 
-// Tafseer provider
+// Tafseer provider - loads tafseer for each ayah
 final tafseerProvider = FutureProvider.family<List<Map<String, dynamic>>, int>(
     (ref, surahNumber) async {
   final tafseerId = ref.watch(selectedTafseerProvider);
@@ -105,13 +105,37 @@ final translationProvider =
   }
 });
 
-// Audio URL builder
-String getAudioUrl(String reciterId, int surah, int ayah) {
+// Audio URL - uses mp3quran.net which is reliable
+String getAudioUrl(String reciterKey, int surah, int ayah) {
   final surahStr = surah.toString().padLeft(3, '0');
   final ayahStr = ayah.toString().padLeft(3, '0');
-  return 'https://cdn.islamway.net/quran/$reciterId/$surahStr$ayahStr.mp3';
+  return 'https://server7.mp3quran.net/afs/$surahStr$ayahStr.mp3';
 }
 
 final isPlayingProvider = StateProvider<bool>((ref) => false);
 final currentAyahProvider = StateProvider<int>((ref) => 1);
 final audioSpeedProvider = StateProvider<double>((ref) => 1.0);
+
+// Selected ayah for showing options (tafseer, bookmark, share)
+final selectedAyahForOptionsProvider = StateProvider<Ayah?>((ref) => null);
+
+// Tafseer for a specific ayah
+final tafseerByAyahProvider =
+    FutureProvider.family<String, Map<String, int>>((ref, params) async {
+  final surahNumber = params['surah']!;
+  final ayahNumber = params['ayah']!;
+  final tafseerId = ref.watch(selectedTafseerProvider);
+  final verseKey =
+      '${surahNumber.toString().padLeft(3, '0')}:${ayahNumber.toString().padLeft(3, '0')}';
+
+  try {
+    final response = await _dio.get('/tafsirs/$tafseerId/by_ayah/$verseKey');
+    final tafsir = response.data['tafsir'];
+    return (tafsir['text'] ?? '')
+        .toString()
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .trim();
+  } catch (e) {
+    return 'التفسير غير متاح';
+  }
+});

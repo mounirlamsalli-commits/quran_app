@@ -41,7 +41,7 @@ class AppLocalizationsZgh extends AppLocalizations {
 
   @override
   String searchNoResults(String query) {
-    return 'ⵓⵔ ⵉⵍⵍⵉ ⴰⵡⴰⵍ ⵉ \"$query\"';
+    return 'ⵓⵔ ⵉⵍⵍⵉ ⴰⵡⴰⵍ ⵉ $query';
   }
 
   @override

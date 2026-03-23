@@ -9,7 +9,7 @@
   "surahNumber": "第{number}章",
   "ayahCount": "{count}节",
   "searchHint": "搜索古兰经...",
-  "searchNoResults": "没有找到\"{query}\"",
+  "searchNoResults": "没有找到{query}",
   "tafseer": "注释",
   "translation": "翻译",
   "audio": "音频",

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/debug/debug_logger.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,52 +17,11 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    // #region agent log
-    DebugLogger.log(
-      runId: 'pre',
-      hypothesisId: 'H7',
-      location: 'lib/features/quran/presentation/screens/splash_screen.dart:initState',
-      message: 'Splash initState entered',
-    );
-    // #endregion
-
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
     Future.delayed(const Duration(seconds: 2), () {
-      // #region agent log
-      DebugLogger.log(
-        runId: 'pre',
-        hypothesisId: 'H7',
-        location: 'lib/features/quran/presentation/screens/splash_screen.dart:delayedGo',
-        message: 'Splash delayed callback fired',
-        data: {'mounted': mounted},
-      );
-      // #endregion
-
-      if (!mounted) return;
-      try {
-        context.go(AppRoutes.home);
-        // #region agent log
-        DebugLogger.log(
-          runId: 'pre',
-          hypothesisId: 'H7',
-          location: 'lib/features/quran/presentation/screens/splash_screen.dart:delayedGo',
-          message: 'Splash navigation to home called',
-        );
-        // #endregion
-      } catch (e) {
-        // #region agent log
-        DebugLogger.log(
-          runId: 'pre',
-          hypothesisId: 'H7',
-          location: 'lib/features/quran/presentation/screens/splash_screen.dart:delayedGo',
-          message: 'Splash navigation failed',
-          data: {'error': e.toString()},
-        );
-        // #endregion
-        rethrow;
-      }
+      if (mounted) context.go(AppRoutes.home);
     });
   }
 

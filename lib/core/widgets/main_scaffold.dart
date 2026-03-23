@@ -1,43 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../router/app_router.dart';
-import '../debug/debug_logger.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;
   const MainScaffold({super.key, required this.child});
 
   int _currentIndex(BuildContext context) {
-    try {
-      final loc = GoRouterState.of(context).uri.path;
-      // #region agent log
-      DebugLogger.log(
-        runId: 'pre',
-        hypothesisId: 'H8',
-        location: 'lib/core/widgets/main_scaffold.dart:_currentIndex',
-        message: 'MainScaffold resolved location',
-        data: {'loc': loc},
-      );
-      // #endregion
-
-      if (loc.startsWith(AppRoutes.home)) return 0;
-      if (loc.startsWith(AppRoutes.surahList)) return 1;
-      if (loc.startsWith(AppRoutes.search)) return 2;
-      if (loc.startsWith(AppRoutes.bookmarks)) return 3;
-      if (loc.startsWith(AppRoutes.settings)) return 4;
-      return 0;
-    } catch (e) {
-      // #region agent log
-      DebugLogger.log(
-        runId: 'pre',
-        hypothesisId: 'H8',
-        location: 'lib/core/widgets/main_scaffold.dart:_currentIndex',
-        message: 'MainScaffold location resolve failed',
-        data: {'error': e.toString()},
-      );
-      // #endregion
-      rethrow;
-    }
+    final loc = GoRouterState.of(context).uri.path;
+    if (loc.startsWith(AppRoutes.home))       return 0;
+    if (loc.startsWith(AppRoutes.surahList))  return 1;
+    if (loc.startsWith(AppRoutes.search))     return 2;
+    if (loc.startsWith(AppRoutes.bookmarks))  return 3;
+    if (loc.startsWith(AppRoutes.settings))   return 4;
+    return 0;
   }
 
   @override

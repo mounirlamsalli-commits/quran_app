@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/quran/presentation/screens/splash_screen.dart';
@@ -8,9 +9,7 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../features/statistics/presentation/screens/statistics_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
-import '../../features/downloads/presentation/screens/downloads_screen.dart';
 import '../widgets/main_scaffold.dart';
-import '../debug/debug_logger.dart';
 
 class AppRoutes {
   static const splash     = '/';
@@ -21,55 +20,30 @@ class AppRoutes {
   static const bookmarks  = '/bookmarks';
   static const statistics = '/statistics';
   static const settings   = '/settings';
-  static const downloads  = '/downloads';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  try {
-    // #region agent log
-    DebugLogger.log(
-      runId: 'pre',
-      hypothesisId: 'H3',
-      location: 'lib/core/router/app_router.dart:appRouterProvider',
-      message: 'Creating GoRouter',
-      data: {'initialLocation': AppRoutes.splash},
-    );
-    // #endregion
-
-    return GoRouter(
-      initialLocation: AppRoutes.splash,
-      routes: [
-        GoRoute(path: AppRoutes.splash,    builder: (_, __) => const SplashScreen()),
-        ShellRoute(
-          builder: (context, state, child) => MainScaffold(child: child),
-          routes: [
-            GoRoute(path: AppRoutes.home,       builder: (_, __) => const HomeScreen()),
-            GoRoute(path: AppRoutes.surahList,  builder: (_, __) => const SurahListScreen()),
-            GoRoute(
-              path: AppRoutes.reader,
-              builder: (_, state) => ReaderScreen(
-                surahNumber: int.parse(state.pathParameters['surahNumber'] ?? '1'),
-              ),
+  return GoRouter(
+    initialLocation: AppRoutes.splash,
+    routes: [
+      GoRoute(path: AppRoutes.splash,    builder: (_, __) => const SplashScreen()),
+      ShellRoute(
+        builder: (context, state, child) => MainScaffold(child: child),
+        routes: [
+          GoRoute(path: AppRoutes.home,       builder: (_, __) => const HomeScreen()),
+          GoRoute(path: AppRoutes.surahList,  builder: (_, __) => const SurahListScreen()),
+          GoRoute(
+            path: AppRoutes.reader,
+            builder: (_, state) => ReaderScreen(
+              surahNumber: int.parse(state.pathParameters['surahNumber'] ?? '1'),
             ),
-            GoRoute(path: AppRoutes.search,     builder: (_, __) => const SearchScreen()),
-            GoRoute(path: AppRoutes.bookmarks,  builder: (_, __) => const BookmarksScreen()),
-            GoRoute(path: AppRoutes.statistics, builder: (_, __) => const StatisticsScreen()),
-            GoRoute(path: AppRoutes.settings,   builder: (_, __) => const SettingsScreen()),
-            GoRoute(path: AppRoutes.downloads,  builder: (_, __) => const DownloadsScreen()),
-          ],
-        ),
-      ],
-    );
-  } catch (e) {
-    // #region agent log
-    DebugLogger.log(
-      runId: 'pre',
-      hypothesisId: 'H3',
-      location: 'lib/core/router/app_router.dart:appRouterProvider',
-      message: 'GoRouter creation failed',
-      data: {'error': e.toString()},
-    );
-    // #endregion
-    rethrow;
-  }
+          ),
+          GoRoute(path: AppRoutes.search,     builder: (_, __) => const SearchScreen()),
+          GoRoute(path: AppRoutes.bookmarks,  builder: (_, __) => const BookmarksScreen()),
+          GoRoute(path: AppRoutes.statistics, builder: (_, __) => const StatisticsScreen()),
+          GoRoute(path: AppRoutes.settings,   builder: (_, __) => const SettingsScreen()),
+        ],
+      ),
+    ],
+  );
 });

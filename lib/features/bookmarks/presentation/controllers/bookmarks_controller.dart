@@ -1,59 +1,90 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/bookmark.dart';
-import '../../data/repositories/bookmarks_repository_impl.dart';
 
-final bookmarksProvider = StateNotifierProvider<BookmarksNotifier, AsyncValue<List<Bookmark>>>((ref) {
-  return BookmarksNotifier();
-});
+const _kBookmarksKey = 'bookmarks_list';
 
-class BookmarksNotifier extends StateNotifier<AsyncValue<List<Bookmark>>> {
-  BookmarksNotifier() : super(const AsyncValue.loading()) { load(); }
+final bookmarksProvider = StateNotifierProvider<BookmarksNotifier, List<Bookmark>>(
+  (ref) => BookmarksNotifier(),
+);
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
-    final repo = BookmarksRepositoryImpl();
-    final result = await repo.getAllBookmarks();
-    result.fold(
-      (failure) => state = AsyncValue.error(failure, StackTrace.current),
-      (bookmarks) => state = AsyncValue.data(bookmarks),
+class BookmarksNotifier extends StateNotifier<List<Bookmark>> {
+  BookmarksNotifier() : super([]) { _load(); }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kBookmarksKey);
+    if (raw != null) {
+      final list = jsonDecode(raw) as List;
+      state = list.map((e) => _fromJson(e)).toList();
+    }
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kBookmarksKey, jsonEncode(state.map(_toJson).toList()));
+  }
+
+  bool isBookmarked(int surahNumber, int ayahNumber) {
+    return state.any((b) => b.surahNumber == surahNumber && b.ayahNumber == ayahNumber);
+  }
+
+  Future<void> addBookmark({
+    required int surahNumber,
+    required int ayahNumber,
+    required String ayahText,
+    String customName = '',
+  }) async {
+    final bookmark = Bookmark(
+      id: '${surahNumber}_$ayahNumber',
+      surahNumber: surahNumber,
+      ayahNumber: ayahNumber,
+      ayahText: ayahText,
+      customName: customName.isEmpty ? 'سورة $surahNumber - آية $ayahNumber' : customName,
+      folderId: 'default',
+      createdAt: DateTime.now(),
     );
+    state = [...state.where((b) => b.id != bookmark.id), bookmark];
+    await _save();
   }
 
-  Future<void> add(Bookmark bookmark) async {
-    final repo = BookmarksRepositoryImpl();
-    await repo.addBookmark(bookmark);
-    await load();
+  Future<void> removeBookmark(int surahNumber, int ayahNumber) async {
+    state = state.where((b) => !(b.surahNumber == surahNumber && b.ayahNumber == ayahNumber)).toList();
+    await _save();
   }
 
-  Future<void> remove(String id) async {
-    final repo = BookmarksRepositoryImpl();
-    await repo.removeBookmark(id);
-    await load();
+  Future<void> toggleBookmark({
+    required int surahNumber,
+    required int ayahNumber,
+    required String ayahText,
+  }) async {
+    if (isBookmarked(surahNumber, ayahNumber)) {
+      await removeBookmark(surahNumber, ayahNumber);
+    } else {
+      await addBookmark(surahNumber: surahNumber, ayahNumber: ayahNumber, ayahText: ayahText);
+    }
   }
 
-  Future<void> update(Bookmark bookmark) async {
-    final repo = BookmarksRepositoryImpl();
-    await repo.updateBookmark(bookmark);
-    await load();
-  }
-}
+  static Map<String, dynamic> _toJson(Bookmark b) => {
+    'id': b.id,
+    'surahNumber': b.surahNumber,
+    'ayahNumber': b.ayahNumber,
+    'ayahText': b.ayahText,
+    'customName': b.customName,
+    'folderId': b.folderId,
+    'createdAt': b.createdAt.toIso8601String(),
+    'note': b.note,
+  };
 
-final lastReadProvider = StateNotifierProvider<LastReadNotifier, Bookmark?>((ref) {
-  return LastReadNotifier();
-});
-
-class LastReadNotifier extends StateNotifier<Bookmark?> {
-  LastReadNotifier() : super(null) { load(); }
-
-  Future<void> load() async {
-    final repo = BookmarksRepositoryImpl();
-    final result = await repo.getLastReadBookmark();
-    result.fold((_) {}, (bookmark) => state = bookmark);
-  }
-
-  Future<void> set(Bookmark bookmark) async {
-    final repo = BookmarksRepositoryImpl();
-    await repo.setLastRead(bookmark);
-    state = bookmark;
-  }
+  static Bookmark _fromJson(Map<String, dynamic> j) => Bookmark(
+    id: j['id'],
+    surahNumber: j['surahNumber'],
+    ayahNumber: j['ayahNumber'],
+    ayahText: j['ayahText'],
+    customName: j['customName'],
+    folderId: j['folderId'],
+    createdAt: DateTime.parse(j['createdAt']),
+    note: j['note'],
+  );
 }

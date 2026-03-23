@@ -41,7 +41,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String searchNoResults(String query) {
-    return '没有找到\"$query\"';
+    return '没有找到$query';
   }
 
   @override

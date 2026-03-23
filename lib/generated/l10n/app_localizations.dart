@@ -161,7 +161,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchNoResults.
   ///
   /// In ar, this message translates to:
-  /// **'لا نتائج لـ \"{query}\"'**
+  /// **'لا نتائج لـ {query}'**
   String searchNoResults(String query);
 
   /// No description provided for @tafseer.
