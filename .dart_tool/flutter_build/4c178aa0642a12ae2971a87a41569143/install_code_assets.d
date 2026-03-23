@@ -1,1 +1,0 @@
- C:\\Users\\Dev\\Desktop\\ByClaude\\quran_app_structure\\quran_app\\.dart_tool\\flutter_build\\4c178aa0642a12ae2971a87a41569143\\native_assets.json: 
