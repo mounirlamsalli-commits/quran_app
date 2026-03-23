@@ -1,0 +1,74 @@
+name: quran_app
+description: تطبيق القرآن الكريم — عصري، متعدد اللغات، قابل للتوسع
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # Network
+  dio: ^5.4.3
+  connectivity_plus: ^6.0.3
+
+  # Local Storage
+  sqflite: ^2.3.3
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.3
+
+  # Audio
+  just_audio: ^0.9.39
+  just_audio_windows: ^0.2.2
+  just_audio_background: ^0.0.1-beta.11
+  audio_service: ^0.18.14
+
+  # Code Generation
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+
+  # Utils
+  intl: 0.20.2
+  dartz: ^0.10.1
+  equatable: ^2.0.5
+  injectable: ^2.4.2
+  get_it: ^7.7.0
+
+  # UI
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  lottie: ^3.1.2
+  share_plus: ^9.0.0
+  flutter_local_notifications: ^17.2.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.9
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.0
+  injectable_generator: ^2.4.2
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/data/quran.json
+    - assets/data/surahs.json
+    - assets/images/
